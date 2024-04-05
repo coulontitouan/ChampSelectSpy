@@ -29,12 +29,12 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.tmr1 = new System.Windows.Forms.Timer(this.components);
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.btnOpGGAll = new System.Windows.Forms.Button();
             this.chkAutoOPGG = new System.Windows.Forms.CheckBox();
-            this.cmbRegion = new System.Windows.Forms.ComboBox();
             this.txtParticipants = new System.Windows.Forms.TextBox();
             this.btnUGGALL = new System.Windows.Forms.Button();
             this.chkAutoUGG = new System.Windows.Forms.CheckBox();
@@ -42,6 +42,7 @@
             this.chkAutoMinimize = new System.Windows.Forms.CheckBox();
             this.chkAutoPORO = new System.Windows.Forms.CheckBox();
             this.btnPOROALL = new System.Windows.Forms.Button();
+            this.txtRegion = new System.Windows.Forms.TextBox();
             this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -89,27 +90,6 @@
             this.chkAutoOPGG.UseVisualStyleBackColor = true;
             this.chkAutoOPGG.CheckedChanged += new System.EventHandler(this.ChkAutoOPGG_CheckedChanged);
             // 
-            // cmbRegion
-            // 
-            this.cmbRegion.FormattingEnabled = true;
-            this.cmbRegion.Items.AddRange(new object[] {
-            "EUW",
-            "NA",
-            "EUNE",
-            "OCE",
-            "KR",
-            "JP",
-            "BR",
-            "LAS",
-            "LAN",
-            "RU",
-            "SEA"});
-            this.cmbRegion.Location = new System.Drawing.Point(247, 87);
-            this.cmbRegion.Name = "cmbRegion";
-            this.cmbRegion.Size = new System.Drawing.Size(67, 21);
-            this.cmbRegion.TabIndex = 12;
-            this.cmbRegion.SelectedIndexChanged += new System.EventHandler(this.CmbRegion_SelectedIndexChanged);
-            // 
             // txtParticipants
             // 
             this.txtParticipants.Location = new System.Drawing.Point(12, 3);
@@ -149,7 +129,7 @@
             this.chkTopMost.TabIndex = 16;
             this.chkTopMost.Text = "Keep window on top";
             this.chkTopMost.UseVisualStyleBackColor = true;
-            this.chkTopMost.CheckedChanged += new System.EventHandler(this.chkTopMost_CheckedChanged);
+            this.chkTopMost.CheckedChanged += new System.EventHandler(this.ChkTopMost_CheckedChanged);
             // 
             // chkAutoMinimize
             // 
@@ -160,7 +140,7 @@
             this.chkAutoMinimize.TabIndex = 17;
             this.chkAutoMinimize.Text = "Auto minimize when in game";
             this.chkAutoMinimize.UseVisualStyleBackColor = true;
-            this.chkAutoMinimize.CheckedChanged += new System.EventHandler(this.chkAutoMinimize_CheckedChanged);
+            this.chkAutoMinimize.CheckedChanged += new System.EventHandler(this.ChkAutoMinimize_CheckedChanged);
             // 
             // chkAutoPORO
             // 
@@ -183,11 +163,20 @@
             this.btnPOROALL.UseVisualStyleBackColor = true;
             this.btnPOROALL.Click += new System.EventHandler(this.BtnPOROALL_Click);
             // 
+            // txtRegion
+            // 
+            this.txtRegion.Location = new System.Drawing.Point(264, 91);
+            this.txtRegion.Name = "txtRegion";
+            this.txtRegion.ReadOnly = true;
+            this.txtRegion.Size = new System.Drawing.Size(50, 20);
+            this.txtRegion.TabIndex = 21;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(329, 220);
+            this.Controls.Add(this.txtRegion);
             this.Controls.Add(this.btnPOROALL);
             this.Controls.Add(this.chkAutoPORO);
             this.Controls.Add(this.chkAutoMinimize);
@@ -195,16 +184,15 @@
             this.Controls.Add(this.chkAutoUGG);
             this.Controls.Add(this.btnUGGALL);
             this.Controls.Add(this.txtParticipants);
-            this.Controls.Add(this.cmbRegion);
             this.Controls.Add(this.chkAutoOPGG);
             this.Controls.Add(this.btnOpGGAll);
             this.Controls.Add(this.statusStrip1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Form1";
-            this.Text = "ChampSelectSpy - 1.51";
-            this.TopMost = true;
+            this.Text = "ChampSelectSpy";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
@@ -219,7 +207,6 @@
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
         private System.Windows.Forms.Button btnOpGGAll;
         private System.Windows.Forms.CheckBox chkAutoOPGG;
-        private System.Windows.Forms.ComboBox cmbRegion;
         private System.Windows.Forms.TextBox txtParticipants;
         private System.Windows.Forms.Button btnUGGALL;
         private System.Windows.Forms.CheckBox chkAutoUGG;
@@ -227,6 +214,7 @@
         private System.Windows.Forms.CheckBox chkAutoMinimize;
         private System.Windows.Forms.CheckBox chkAutoPORO;
         private System.Windows.Forms.Button btnPOROALL;
+        private System.Windows.Forms.TextBox txtRegion;
     }
 }
 

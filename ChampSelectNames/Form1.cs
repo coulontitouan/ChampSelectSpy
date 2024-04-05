@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Management;
 using System.Net;
+using System.Numerics;
 using System.Text;
 using System.Windows.Forms;
 
@@ -17,20 +19,26 @@ namespace ChampSelectSpy
         {
             public bool isRunning;
             public int ProcessId;
-            public string cmdline;
+            public bool LeagueRunning;
             public int RiotPort;
             public string RiotToken;
             public int ClientPort;
             public string ClientToken;
             public string Region;
             public string SummonerDisplayName;
-            public String GameState;
+            public string GameState;
         }
 
-        readonly List<string> participants = new();
+        readonly List<string> participants = [];
         class Summoner
         {
-            public String DisplayName;
+            public string GameName;
+            public string TagLine;
+        }
+        class TeamData
+        {
+            public List<Dictionary<string,string>> MyTeam;
+            public List<Dictionary<string, string>> TheirTeam;
         }
 
         private ClientData ClientInfo;
@@ -49,25 +57,10 @@ namespace ChampSelectSpy
             chkAutoOPGG.Checked = Properties.Settings.Default.AutoOPGG;
             chkAutoUGG.Checked = Properties.Settings.Default.AutoUGG;
             chkAutoPORO.Checked = Properties.Settings.Default.AutoPORO;
-            cmbRegion.Text = Properties.Settings.Default.Region;
             chkTopMost.Checked = Properties.Settings.Default.TopMost;
-            this.TopMost = Properties.Settings.Default.TopMost;
+            TopMost = Properties.Settings.Default.TopMost;
             chkAutoMinimize.Checked = Properties.Settings.Default.AutoMinimize;
 
-        }
-
-
-        public static string GetBetween(string strSource, string strStart, string strEnd)
-        {
-            if (strSource.Contains(strStart) && strSource.Contains(strEnd))
-            {
-                int Start, End;
-                Start = strSource.IndexOf(strStart, 0) + strStart.Length;
-                End = strSource.IndexOf(strEnd, Start);
-                return strSource.Substring(Start, End - Start);
-            }
-
-            return "";
         }
 
         private void Tmr1_Tick(object sender, EventArgs e)
@@ -78,17 +71,25 @@ namespace ChampSelectSpy
                 ClientInfo.isRunning = true;
                 ClientInfo.ProcessId = processes[0].Id;
                 toolStripStatusLabel1.Text = "Summoner: " + ClientInfo.SummonerDisplayName + " - Gamestate: " + ClientInfo.GameState;
-                if (ClientInfo.cmdline == null)
+                if (!ClientInfo.LeagueRunning)
                 {
                     foreach (ManagementObject obj in mngmtClass.GetInstances())
                     {
                         if (obj["Name"].Equals("LeagueClientUx.exe"))
                         {
-                            ClientInfo.cmdline = obj["Name"] + " [" + obj["CommandLine"] + "]";
-                            ClientInfo.RiotPort = int.Parse(GetBetween(ClientInfo.cmdline, "--riotclient-app-port=", "\" \"--no-rads"));
-                            ClientInfo.RiotToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + GetBetween(ClientInfo.cmdline, "--riotclient-auth-token=", "\" \"--riotclient")));
-                            ClientInfo.ClientPort = int.Parse(GetBetween(ClientInfo.cmdline, "--app-port=", "\" \"--install"));
-                            ClientInfo.ClientToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + GetBetween(ClientInfo.cmdline, "--remoting-auth-token=", "\" \"--respawn-command=LeagueClient.exe")));
+                            Dictionary<string, string> commandLine = ((string)obj["CommandLine"])
+                                .Split(' ')
+                                .Select(couple => couple
+                                    .Substring(1, couple.Length - 2)
+                                    .Split(new[] { '=' }, 2)
+                                )
+                                .Where(couple => couple.Length == 2)
+                                .ToDictionary(sp => sp[0], sp => sp[1]);
+                            ClientInfo.RiotPort = int.Parse(commandLine.First(param => param.Key == "--riotclient-app-port").Value);
+                            ClientInfo.RiotToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + commandLine.First(param => param.Key == "--riotclient-auth-token").Value));
+                            ClientInfo.ClientPort = int.Parse(commandLine.First(param => param.Key == "--app-port").Value);
+                            ClientInfo.ClientToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + commandLine.First(param => param.Key == "--remoting-auth-token").Value));
+                            ClientInfo.LeagueRunning = true;
                         }
                     }
                 }
@@ -101,9 +102,12 @@ namespace ChampSelectSpy
 
             if (ClientInfo.isRunning)
             {
-                if (ClientInfo.Region == null || ClientInfo.Region == "")
+                if (ClientInfo.Region == null)
                 {
-                    ClientInfo.Region = GetBetween(MakeRequest(ClientInfo, "GET", "/lol-rso-auth/v1/authorization", client: true), "currentPlatformId\":\"", "\",\"subject").ToLower();
+                    string Request = MakeRequest(ClientInfo, "GET", "/lol-rso-auth/v1/authorization", client: true);
+                    if (Request != string.Empty)
+                        ClientInfo.Region = string.Concat(JsonConvert.DeserializeObject<Dictionary<string, string>>(Request)["currentPlatformId"].Where(char.IsLetter));
+                    txtRegion.Text = ClientInfo.Region is not null ? ClientInfo.Region : "EUW";
                 }
 
                 if (ClientInfo.SummonerDisplayName == null)
@@ -111,7 +115,7 @@ namespace ChampSelectSpy
                     Summoner summ = JsonConvert.DeserializeObject<Summoner>(MakeRequest(ClientInfo, "GET", "/lol-summoner/v1/current-summoner", client: true));
                     if (summ != null)
                     {
-                        ClientInfo.SummonerDisplayName = summ.DisplayName;
+                        ClientInfo.SummonerDisplayName = String.Format("{0}#{1}",summ.GameName,summ.TagLine);
 
                     }
                 }
@@ -121,27 +125,38 @@ namespace ChampSelectSpy
                 {
                     if (participants.Count < 5)
                     {
-                        DataSet dataSet = JsonConvert.DeserializeObject<DataSet>(MakeRequest(ClientInfo, "GET", "/chat/v5/participants/champ-select", client: false));
-                        DataTable dataTable = dataSet.Tables["participants"];
-                        if (dataTable.Rows.Count == 5)
+
+                        TeamData teamData = JsonConvert.DeserializeObject<TeamData>(MakeRequest(ClientInfo, "GET", "/lol-champ-select/v1/session", true));
+                        if (teamData is null) { participants.Add("Non disponible en entrainement"); }
+                        else
                         {
-                            foreach (DataRow row in dataTable.Rows)
+                            foreach (Dictionary<string,string> player in teamData.MyTeam)
                             {
-                                participants.Add(row["name"].ToString());
+                                MessageBox.Show(player["summonerId"]);
+                                Summoner summoner = JsonConvert.DeserializeObject<Summoner>(MakeRequest(ClientInfo, "GET", String.Format("/lol-summoner/v1/summoners/{0}", int.Parse(player["summonerId"])),false));
+                                participants.Add(String.Format("{0}#{1}", summoner.GameName, summoner.TagLine));
                             }
-                            if (chkAutoOPGG.Checked)
-                            {
-                                BtnOpGGAll_Click(null, null);
-                            }
-                            if (chkAutoUGG.Checked)
-                            {
-                                BtnUGGALL_Click(null, null);
-                            }
-                            if (chkAutoPORO.Checked)
-                            {
-                                BtnPOROALL_Click(null, null);
-                            }
+                            participants.Add("test");
                         }
+                        //if (dataTable.Rows.Count == 5)
+                        //{
+                        //    foreach (DataRow row in dataTable.Rows)
+                        //    {
+                        //        participants.Add(row["game_name"].ToString() + "-" + row["game_tag"]);
+                        //    }
+                        //    if (chkAutoOPGG.Checked)
+                        //    {
+                        //        BtnOpGGAll_Click(null, null);
+                        //    }
+                        //    if (chkAutoUGG.Checked)
+                        //    {
+                        //        BtnUGGALL_Click(null, null);
+                        //    }
+                        //    if (chkAutoPORO.Checked)
+                        //    {
+                        //        BtnPOROALL_Click(null, null);
+                        //    }
+                        //}
                     }
 
 
@@ -193,7 +208,7 @@ namespace ChampSelectSpy
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://www.op.gg/multisearch/" + cmbRegion.Text + "?summoners=" + string.Join(",", participants),
+                    FileName = "https://www.op.gg/multisearch/" + ClientInfo.Region + "?summoners=" + string.Join(",", participants),
                     UseShellExecute = true
                 });
             }
@@ -211,13 +226,13 @@ namespace ChampSelectSpy
             }
         }
 
-        private void BtnPOROALL_Click(object sneder, EventArgs e)
+        private void BtnPOROALL_Click(object sender, EventArgs e)
         {
             if (participants.Count > 0)
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://porofessor.gg/pregame/" + cmbRegion.Text.ToLower() + "/" + string.Join(",", participants) + "/soloqueue",
+                    FileName = "https://porofessor.gg/pregame/" + ClientInfo.Region + "/" + string.Join(",", participants) + "/soloqueue",
                     UseShellExecute = true
                 });
             }
@@ -241,13 +256,7 @@ namespace ChampSelectSpy
             Properties.Settings.Default.Save();
         }
 
-        private void CmbRegion_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            Properties.Settings.Default.Region = cmbRegion.Text;
-            Properties.Settings.Default.Save();
-        }
-
-        private void chkTopMost_CheckedChanged(object sender, EventArgs e)
+        private void ChkTopMost_CheckedChanged(object sender, EventArgs e)
         {
             Properties.Settings.Default.TopMost = chkTopMost.Checked;
             this.TopMost = chkTopMost.Checked;
@@ -255,7 +264,7 @@ namespace ChampSelectSpy
 
         }
 
-        private void chkAutoMinimize_CheckedChanged(object sender, EventArgs e)
+        private void ChkAutoMinimize_CheckedChanged(object sender, EventArgs e)
         {
             Properties.Settings.Default.AutoMinimize = chkAutoMinimize.Checked;
             Properties.Settings.Default.Save();

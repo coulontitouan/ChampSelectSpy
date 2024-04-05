@@ -5,9 +5,6 @@
     <Setting Name="Region" Type="System.String" Scope="User">
       <Value Profile="(Default)">EUW</Value>
     </Setting>
-    <Setting Name="AutoOPGG" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
     <Setting Name="AutoUGG" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
@@ -16,6 +13,12 @@
     </Setting>
     <Setting Name="AutoMinimize" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="AutoOPGG" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="AutoPORO" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
     </Setting>
   </Settings>
 </SettingsFile>
